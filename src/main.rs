@@ -1,10 +1,11 @@
 mod config;
+mod fmt;
 mod mcp;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use config::Config;
-use mcp::{extract_text, McpClient};
+use mcp::McpClient;
 use serde_json::Value;
 use std::io::{self, Write};
 
@@ -197,12 +198,18 @@ fn print_divider() {
     println!("{}", "-".repeat(50));
 }
 
-fn print_json_pretty(text: &str) {
-    if let Ok(val) = serde_json::from_str::<Value>(text) {
-        println!("{}", serde_json::to_string_pretty(&val).unwrap_or_default());
-    } else {
-        println!("{}", text);
+fn print_result(result: &mcp::ToolResult) {
+    if let Some(ref structured) = result.structured_content {
+        fmt::pretty_print(structured);
+        return;
     }
+    let text = result
+        .content
+        .iter()
+        .filter_map(|c| c.text.clone())
+        .collect::<Vec<_>>()
+        .join("");
+    fmt::pretty_print(&Value::String(text));
 }
 
 async fn run_init(client: &McpClient) -> Result<()> {
@@ -216,22 +223,19 @@ async fn run_init(client: &McpClient) -> Result<()> {
 
 async fn run_calendar(client: &McpClient) -> Result<()> {
     let result = client.call_tool("campaign-calendar", serde_json::json!({})).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
 async fn run_time(client: &McpClient) -> Result<()> {
     let result = client.call_tool("now-time-info", serde_json::json!({})).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
 async fn run_account(client: &McpClient) -> Result<()> {
     let result = client.call_tool("query-my-account", serde_json::json!({})).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
@@ -253,8 +257,7 @@ async fn run_nearby(
         args["keyword"] = Value::String(k.to_string());
     }
     let result = client.call_tool("query-nearby-stores", args).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
@@ -262,8 +265,7 @@ async fn run_address_list(client: &McpClient) -> Result<()> {
     let result = client
         .call_tool("delivery-query-addresses", serde_json::json!({"beType": 2}))
         .await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
@@ -289,8 +291,7 @@ async fn run_address_add(client: &McpClient) -> Result<()> {
     }
 
     let result = client.call_tool("delivery-create-address", args).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
@@ -303,8 +304,7 @@ async fn run_menu(client: &McpClient, store: &str, be: Option<&str>, order_type:
         args["beCode"] = Value::String(b.to_string());
     }
     let result = client.call_tool("query-meals", args).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
@@ -324,8 +324,7 @@ async fn run_detail(
         args["beCode"] = Value::String(b.to_string());
     }
     let result = client.call_tool("query-meal-detail", args).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
@@ -341,52 +340,45 @@ async fn run_coupon_store(
         "orderType": order_type,
     });
     let result = client.call_tool("query-store-coupons", args).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
 async fn run_coupon_my(client: &McpClient) -> Result<()> {
     let result = client.call_tool("query-my-coupons", serde_json::json!({})).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
 async fn run_coupon_available(client: &McpClient) -> Result<()> {
     let result = client.call_tool("available-coupons", serde_json::json!({})).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
 async fn run_coupon_receive(client: &McpClient) -> Result<()> {
     let result = client.call_tool("auto-bind-coupons", serde_json::json!({})).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
 async fn run_mall_products(client: &McpClient) -> Result<()> {
     let result = client.call_tool("mall-points-products", serde_json::json!({})).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
 async fn run_mall_detail(client: &McpClient, spu_id: i64) -> Result<()> {
     let args = serde_json::json!({"spuId": spu_id});
     let result = client.call_tool("mall-product-detail", args).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
 async fn run_mall_exchange(client: &McpClient, sku_id: i64, count: i32) -> Result<()> {
     let args = serde_json::json!({"skuId": sku_id, "count": count});
     let result = client.call_tool("mall-create-order", args).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
@@ -407,8 +399,7 @@ async fn run_calculate_price(
         args["beCode"] = Value::String(b.to_string());
     }
     let result = client.call_tool("calculate-price", args).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
@@ -439,16 +430,14 @@ async fn run_order_create(
         args["takeWayCode"] = Value::String(tw.to_string());
     }
     let result = client.call_tool("create-order", args).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
 async fn run_order_query(client: &McpClient, id: &str) -> Result<()> {
     let args = serde_json::json!({"orderId": id});
     let result = client.call_tool("query-order", args).await?;
-    let text = extract_text(&result);
-    print_json_pretty(&text);
+    print_result(&result);
     Ok(())
 }
 
@@ -497,9 +486,9 @@ async fn interactive_mode(client: &McpClient) -> Result<()> {
                 }
             }
             "5" => {
-                let city = read_line_opt("城市名（回车跳过）: ");
-                let keyword = read_line_opt("关键词（回车跳过）: ");
-                if let Err(e) = run_nearby(client, 2, 2, city.as_deref(), keyword.as_deref()).await {
+                let city = read_line("城市名: ")?;
+                let keyword = read_line("关键词（商圈/学校/路名）: ")?;
+                if let Err(e) = run_nearby(client, 1, 2, Some(&city), Some(&keyword)).await {
                     println!("❌ 查询失败: {}", e);
                 }
             }

@@ -70,6 +70,8 @@ pub struct CallToolParams {
 #[derive(Deserialize, Debug)]
 pub struct ToolResult {
     pub content: Vec<ToolContent>,
+    #[serde(rename = "structuredContent")]
+    pub structured_content: Option<Value>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -169,11 +171,3 @@ impl McpClient {
     }
 }
 
-pub fn extract_text(result: &ToolResult) -> String {
-    result
-        .content
-        .iter()
-        .filter_map(|c| c.text.clone())
-        .collect::<Vec<_>>()
-        .join("")
-}

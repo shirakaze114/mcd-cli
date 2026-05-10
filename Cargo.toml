@@ -12,3 +12,5 @@ anyhow = "1"
 clap = { version = "4", features = ["derive", "env"] }
 toml = "0.8"
 dirs = "6"
+unicode-width = "0.2"
+tabled = "0.18"
