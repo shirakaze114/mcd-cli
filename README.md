@@ -1,4 +1,4 @@
-# mcd
+# mcd-cli
 
 麦当劳 MCP CLI —— 基于麦当劳中国官方 MCP Server 的命令行点餐工具。
 
@@ -14,11 +14,11 @@
 
 ```bash
 git clone <repo>
-cd mcd
+cd mcd-cli
 cargo build --release
 ```
 
-编译完成后，二进制文件位于 `target/release/mcd`。
+编译完成后，二进制文件位于 `target/release/mcd-cli`。
 
 ## 配置
 
@@ -29,11 +29,11 @@ cargo build --release
 ### 2. 保存 Token
 
 ```bash
-# 保存到配置文件（~/.config/mcd/config.toml）
-./mcd login --token <YOUR_MCP_TOKEN>
+# 保存到配置文件（~/.config/mcd-cli/config.toml）
+./mcd-cli login --token <YOUR_MCP_TOKEN>
 
 # 查看配置
-./mcd config
+./mcd-cli config
 ```
 
 Token 优先级：命令行参数 `--token` > 环境变量 `MCD_MCP_TOKEN` > 配置文件。
@@ -43,7 +43,7 @@ Token 优先级：命令行参数 `--token` > 环境变量 `MCD_MCP_TOKEN` > 配
 ### 交互模式（推荐）
 
 ```bash
-./mcd
+./mcd-cli
 ```
 
 进入交互式菜单，按提示操作即可。
@@ -52,39 +52,39 @@ Token 优先级：命令行参数 `--token` > 环境变量 `MCD_MCP_TOKEN` > 配
 
 ```bash
 # 测试连接
-./mcd init
+./mcd-cli init
 
 # 查询附近门店
-./mcd nearby --city "南京市" --keyword "南京审计大学" --be-type 1 --search-type 2
+./mcd-cli nearby --city "南京市" --keyword "南京审计大学" --be-type 1 --search-type 2
 
 # 浏览菜单（到店取餐）
-./mcd menu --store 1990366 --order-type 1
+./mcd-cli menu --store 1990366 --order-type 1
 
 # 浏览菜单（外送）
-./mcd menu --store 1960282 --be 196028202 --order-type 2
+./mcd-cli menu --store 1960282 --be 196028202 --order-type 2
 
 # 计算价格（到店取餐）
-./mcd price --store 1990366 --order-type 1 \
+./mcd-cli price --store 1990366 --order-type 1 \
   --items '[{"productCode":"9900005462","quantity":1}]'
 
 # 创建订单（到店取餐，需传入 takeWayCode）
-./mcd order create --store 1990366 --order-type 1 \
+./mcd-cli order create --store 1990366 --order-type 1 \
   --items '[{"productCode":"9900005462","quantity":1}]' \
   --take-way take-in-store
 
 # 创建订单（外送）
-./mcd order create --store 1960282 --be 196028202 --address <ADDRESS_ID> --order-type 2 \
+./mcd-cli order create --store 1960282 --be 196028202 --address <ADDRESS_ID> --order-type 2 \
   --items '[{"productCode":"903050","quantity":1}]'
 
 # 查询订单
-./mcd order query <ORDER_ID>
+./mcd-cli order query <ORDER_ID>
 
 # 查看优惠券
-./mcd coupon my
-./mcd coupon receive
+./mcd-cli coupon my
+./mcd-cli coupon receive
 
 # 积分商城
-./mcd mall products
+./mcd-cli mall products
 ```
 
 ## 命令列表

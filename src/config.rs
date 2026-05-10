@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-const CONFIG_DIR: &str = "mcd";
+const CONFIG_DIR: &str = "mcd-cli";
 const CONFIG_FILE: &str = "config.toml";
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]

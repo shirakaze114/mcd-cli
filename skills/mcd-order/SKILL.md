@@ -20,16 +20,16 @@
 
 用户需要在 `https://open.mcd.cn/mcp` 申请并激活 MCP Token。Token 可以通过以下方式配置：
 
-1. 命令行：`mcd login --token <TOKEN>`（保存到配置文件）
+1. 命令行：`mcd-cli login --token <TOKEN>`（保存到配置文件）
 2. 环境变量：`MCD_MCP_TOKEN=<TOKEN>`
-3. 命令行参数：`mcd --token <TOKEN> <command>`
+3. 命令行参数：`mcd-cli --token <TOKEN> <command>`
 
 ## 工作流
 
 ### 1. 查询门店
 
 ```bash
-mcd nearby --city <城市> --keyword <关键词> --be-type 1 --search-type 2
+mcd-cli nearby --city <城市> --keyword <关键词> --be-type 1 --search-type 2
 ```
 
 获取 `storeCode` 和 `storeName`。记录 `storeCode` 供后续使用。
@@ -38,12 +38,12 @@ mcd nearby --city <城市> --keyword <关键词> --be-type 1 --search-type 2
 
 **到店取餐：**
 ```bash
-mcd menu --store <STORE_CODE> --order-type 1
+mcd-cli menu --store <STORE_CODE> --order-type 1
 ```
 
 **外送：**
 ```bash
-mcd menu --store <STORE_CODE> --be <BE_CODE> --order-type 2
+mcd-cli menu --store <STORE_CODE> --be <BE_CODE> --order-type 2
 ```
 
 从菜单中选择商品，记录 `productCode`。
@@ -52,13 +52,13 @@ mcd menu --store <STORE_CODE> --be <BE_CODE> --order-type 2
 
 **到店取餐：**
 ```bash
-mcd price --store <STORE_CODE> --order-type 1 \
+mcd-cli price --store <STORE_CODE> --order-type 1 \
   --items '[{"productCode":"<CODE>","quantity":1}]'
 ```
 
 **外送：**
 ```bash
-mcd price --store <STORE_CODE> --be <BE_CODE> --order-type 2 \
+mcd-cli price --store <STORE_CODE> --be <BE_CODE> --order-type 2 \
   --items '[{"productCode":"<CODE>","quantity":1}]'
 ```
 
@@ -68,21 +68,21 @@ mcd price --store <STORE_CODE> --be <BE_CODE> --order-type 2 \
 
 **到店取餐：**
 ```bash
-mcd order create --store <STORE_CODE> --order-type 1 \
+mcd-cli order create --store <STORE_CODE> --order-type 1 \
   --items '[{"productCode":"<CODE>","quantity":1}]' \
   --take-way <TAKE_WAY_CODE>
 ```
 
 **外送：**
 ```bash
-mcd order create --store <STORE_CODE> --be <BE_CODE> --address <ADDRESS_ID> --order-type 2 \
+mcd-cli order create --store <STORE_CODE> --be <BE_CODE> --address <ADDRESS_ID> --order-type 2 \
   --items '[{"productCode":"<CODE>","quantity":1}]'
 ```
 
 ### 5. 查询订单
 
 ```bash
-mcd order query <ORDER_ID>
+mcd-cli order query <ORDER_ID>
 ```
 
 ## 常用商品编码示例
@@ -95,7 +95,7 @@ mcd order query <ORDER_ID>
 | 大薯条 | `4820` |
 | 中杯可乐 | `903050` |
 
-> 实际编码以 `mcd menu` 查询结果为准，不同门店可能存在差异。
+> 实际编码以 `mcd-cli menu` 查询结果为准，不同门店可能存在差异。
 
 ## 注意事项
 

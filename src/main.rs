@@ -10,7 +10,7 @@ use serde_json::Value;
 use std::io::{self, Write};
 
 #[derive(Parser, Debug)]
-#[command(name = "mcd")]
+#[command(name = "mcd-cli")]
 #[command(about = "麦当劳 MCP CLI - 基于麦当劳官方 MCP Server 的点餐工具")]
 struct Cli {
     #[arg(long, env = "MCD_MCP_TOKEN", help = "MCP Token")]
@@ -647,7 +647,7 @@ fn resolve_token(cli_token: Option<String>, cfg: &Config) -> Result<String> {
     cli_token
         .or_else(|| std::env::var("MCD_MCP_TOKEN").ok())
         .or_else(|| cfg.token.clone())
-        .context("错误: 需要提供 MCP Token\n方式1: mcd login --token xxx\n方式2: 环境变量 MCD_MCP_TOKEN=xxx\n方式3: 命令行参数 --token xxx")
+        .context("错误: 需要提供 MCP Token\n方式1: mcd-cli login --token xxx\n方式2: 环境变量 MCD_MCP_TOKEN=xxx\n方式3: 命令行参数 --token xxx")
 }
 
 #[tokio::main]
