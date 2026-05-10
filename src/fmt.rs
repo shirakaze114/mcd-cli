@@ -60,7 +60,20 @@ fn pretty_print_json(val: &Value) {
             println!("{}", format_price(val));
             return;
         }
-        if val["data"].get("coupons").is_some() || (val["data"].is_array() && val["data"].as_array().map(|a| !a.is_empty()).unwrap_or(false)) {
+        if val["data"].is_array() && val["data"].as_array().map(|a| !a.is_empty()).unwrap_or(false) {
+            if val["data"][0].get("storeCode").is_some() {
+                println!("{}", format_nearby(val));
+                return;
+            }
+            if val["data"][0].get("spuId").is_some() || val["data"][0].get("spuName").is_some() {
+                println!("{}", format_mall_products(val));
+                return;
+            }
+            // store coupons array
+            println!("{}", format_coupons(val));
+            return;
+        }
+        if val["data"].get("coupons").is_some() {
             println!("{}", format_coupons(val));
             return;
         }
@@ -71,16 +84,6 @@ fn pretty_print_json(val: &Value) {
         if val["data"].get("timestamp").is_some() {
             println!("{}", format_time(val));
             return;
-        }
-        if val["data"].is_array() && val["data"].as_array().map(|a| !a.is_empty()).unwrap_or(false) {
-            if val["data"][0].get("storeCode").is_some() {
-                println!("{}", format_nearby(val));
-                return;
-            }
-            if val["data"][0].get("spuId").is_some() || val["data"][0].get("spuName").is_some() {
-                println!("{}", format_mall_products(val));
-                return;
-            }
         }
         if val["data"].get("detail").is_some() && val["data"].get("spuName").is_some() {
             println!("{}", format_mall_detail(val));
