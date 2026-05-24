@@ -1,3 +1,4 @@
+use qrcode::{QrCode, render::unicode};
 use serde_json::Value;
 use tabled::{builder::Builder, settings::Style};
 use unicode_width::UnicodeWidthStr;
@@ -9,6 +10,22 @@ fn pad(s: &str, width: usize) -> String {
     } else {
         format!("{}{}", s, " ".repeat(width - w))
     }
+}
+
+fn render_qr(url: &str) -> Option<String> {
+    QrCode::new(url.as_bytes())
+        .ok()
+        .map(|code| {
+            code.render::<unicode::Dense1x2>()
+                .quiet_zone(true)
+                .build()
+        })
+}
+
+fn extract_order_id(url: &str) -> Option<&str> {
+    url.split("orderId=")
+        .nth(1)
+        .map(|s| s.split('&').next().unwrap_or(s))
 }
 
 fn money_cents(cents: i64) -> String {
@@ -258,6 +275,17 @@ fn format_order(val: &Value) -> String {
 
     if let Some(url) = data.get("payH5Url").and_then(|v| v.as_str()) {
         out.push_str(&format!("  💳 支付链接: {}\n", url));
+        let qr_url = extract_order_id(url)
+            .map(|id| format!("https://m.mcd.cn/mcp/jumpToApp?orderId={}", id))
+            .unwrap_or_else(|| url.to_string());
+        out.push_str("  📱 扫码支付 (麦当劳APP):\n");
+        if let Some(qr) = render_qr(&qr_url) {
+            for line in qr.lines() {
+                out.push_str(&format!("    {}\n", line));
+            }
+        } else {
+            out.push_str("    (无法生成二维码)\n");
+        }
         out.push('\n');
     }
 
