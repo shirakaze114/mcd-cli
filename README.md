@@ -5,10 +5,13 @@
 ## 功能
 
 - 🔍 查询附近门店、浏览菜单、查看餐品详情
+- 🥗 餐品营养信息查询（热量、蛋白质、脂肪等）
 - 🎫 查看/领取优惠券
 - 🛒 计算价格、创建订单、查询订单状态
-- 🎁 积分商城兑换
+- 🎁 积分商城兑换（虚拟券 + 实物商品）
 - 📅 活动日历、账户积分查询
+- 🚗 支持到店取餐、麦乐送外送、得来速车道取餐、企业团餐
+- ⏰ 支持预约下单
 
 ## 安装
 
@@ -54,27 +57,64 @@ Token 优先级：命令行参数 `--token` > 环境变量 `MCD_MCP_TOKEN` > 配
 # 测试连接
 ./mcd-cli init
 
-# 查询附近门店
+# 查询附近门店（到店自取）
 ./mcd-cli nearby --city "南京市" --keyword "南京审计大学" --be-type 1 --search-type 2
 
+# 查询得来速门店
+./mcd-cli nearby --city "南京市" --keyword "麦当劳" --be-type 5 --search-type 2
+
+# 外送可配送门店查询
+./mcd-cli delivery-stores --address-id <ADDRESS_ID> --be-type 2
+
+# 团餐助餐服务查询
+./mcd-cli catering --store <STORE_CODE> --be <BE_CODE>
+
+# 餐品营养信息
+./mcd-cli nutrition
+
 # 浏览菜单（到店取餐）
-./mcd-cli menu --store 1990366 --order-type 1
+./mcd-cli menu --store 1990366 --order-type 1 --be-type 1
 
 # 浏览菜单（外送）
-./mcd-cli menu --store 1960282 --be 196028202 --order-type 2
+./mcd-cli menu --store 1960282 --be 196028202 --order-type 2 --be-type 2
+
+# 浏览菜单（得来速）
+./mcd-cli menu --store 1990366 --order-type 1 --be-type 5
+
+# 浏览菜单（预约）
+./mcd-cli menu --store 1990366 --order-type 1 --be-type 1 --reservation-date "2026-05-25 12:00"
+
+# 餐品详情
+./mcd-cli detail 4820 --store 1990366 --order-type 1 --be-type 1
 
 # 计算价格（到店取餐）
-./mcd-cli price --store 1990366 --order-type 1 \
+./mcd-cli price --store 1990366 --order-type 1 --be-type 1 \
   --items '[{"productCode":"9900005462","quantity":1}]'
 
-# 创建订单（到店取餐，需传入 takeWayCode）
-./mcd-cli order create --store 1990366 --order-type 1 \
+# 计算价格（使用优惠券）
+./mcd-cli price --store 1990366 --order-type 1 --be-type 1 \
+  --items '[{"productCode":"9900005462","quantity":1}]' \
+  --coupon-id <COUPON_ID>
+
+# 创建订单（到店取餐）
+./mcd-cli order create --store 1990366 --order-type 1 --be-type 1 \
   --items '[{"productCode":"9900005462","quantity":1}]' \
   --take-way take-in-store
 
 # 创建订单（外送）
-./mcd-cli order create --store 1960282 --be 196028202 --address <ADDRESS_ID> --order-type 2 \
+./mcd-cli order create --store 1960282 --be 196028202 --address <ADDRESS_ID> --order-type 2 --be-type 2 \
   --items '[{"productCode":"903050","quantity":1}]'
+
+# 创建订单（预约）
+./mcd-cli order create --store 1990366 --order-type 1 --be-type 1 \
+  --items '[{"productCode":"9900005462","quantity":1}]' \
+  --take-way take-in-store \
+  --reservation-date "2026-05-25 12:00"
+
+# 创建订单（团餐）
+./mcd-cli order create --store <STORE> --be <BE> --order-type 2 --be-type 6 \
+  --items '[{"productCode":"xxx","quantity":1}]' \
+  --gm-service-code <CODE>
 
 # 查询订单
 ./mcd-cli order query <ORDER_ID>
@@ -85,6 +125,11 @@ Token 优先级：命令行参数 `--token` > 环境变量 `MCD_MCP_TOKEN` > 配
 
 # 积分商城
 ./mcd-cli mall products
+./mcd-cli mall detail <SPU_ID>
+./mcd-cli mall exchange --sku-id <SKU_ID> --count 1
+./mcd-cli mall physical --sku-id <SKU_ID> --count 1 --address-id <ADDRESS_ID> --spu-category 2
+./mcd-cli mall orders
+./mcd-cli mall order-detail <ORDER_ID>
 ```
 
 ## 命令列表
@@ -97,7 +142,10 @@ Token 优先级：命令行参数 `--token` > 环境变量 `MCD_MCP_TOKEN` > 配
 | `time` | 查看当前时间 |
 | `calendar` | 查看活动日历 |
 | `account` | 查看账户/积分 |
-| `nearby` | 查询附近门店 |
+| `nearby` | 查询附近门店（到店/得来速） |
+| `delivery-stores` | 外送/团餐可配送门店查询 |
+| `catering` | 查询团餐助餐服务 |
+| `nutrition` | 餐品营养信息列表 |
 | `address list` | 查看配送地址 |
 | `address add` | 新增配送地址 |
 | `menu` | 浏览菜单 |
@@ -108,7 +156,10 @@ Token 优先级：命令行参数 `--token` > 环境变量 `MCD_MCP_TOKEN` > 配
 | `coupon receive` | 一键领券 |
 | `mall products` | 积分兑换商品列表 |
 | `mall detail` | 积分商品详情 |
-| `mall exchange` | 积分兑换下单 |
+| `mall exchange` | 积分兑换券下单（虚拟） |
+| `mall physical` | 积分兑换实物下单 |
+| `mall orders` | 麦麦商城订单查询 |
+| `mall order-detail` | 麦麦商城订单详情查询 |
 | `price` | 计算价格 |
 | `order create` | 创建订单 |
 | `order query` | 查询订单 |
@@ -119,6 +170,7 @@ Token 优先级：命令行参数 `--token` > 环境变量 `MCD_MCP_TOKEN` > 配
 - 协议：MCP Streamable HTTP (`https://mcp.mcd.cn`)
 - 认证：Bearer Token
 - MCP 版本：`2025-06-18`
+- API 版本：`v1.0.4`
 
 ## 免责声明
 

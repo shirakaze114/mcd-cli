@@ -52,6 +52,10 @@ fn pretty_print_json(val: &Value) {
             println!("{}", format_addresses(val));
             return;
         }
+        if val["data"].get("goods").is_some() && val["data"].get("orderStatusTitle").is_some() {
+            println!("{}", format_mall_order_detail(val));
+            return;
+        }
         if val["data"].get("orderStatus").is_some() || val["data"].get("orderId").is_some() {
             println!("{}", format_order(val));
             return;
@@ -67,6 +71,10 @@ fn pretty_print_json(val: &Value) {
             }
             if val["data"][0].get("spuId").is_some() || val["data"][0].get("spuName").is_some() {
                 println!("{}", format_mall_products(val));
+                return;
+            }
+            if val["data"][0].get("list").is_some() {
+                println!("{}", format_mall_orders(val));
                 return;
             }
             // store coupons array
@@ -92,6 +100,29 @@ fn pretty_print_json(val: &Value) {
         if val["data"].get("exchangeResult").is_some() || val["data"].get("orderNo").is_some() {
             println!("{}", format_mall_order(val));
             return;
+        }
+        if val["data"].get("dailyList").is_some() {
+            println!("{}", format_calendar(val));
+            return;
+        }
+        if val["data"].get("mealAssistanceItems").is_some() {
+            println!("{}", format_catering(val));
+            return;
+        }
+        if val["data"].get("rounds").is_some() {
+            println!("{}", format_meal_detail(val));
+            return;
+        }
+        if val["data"].get("goods").is_some() && val["data"].get("orderStatusTitle").is_some() {
+            println!("{}", format_mall_order_detail(val));
+            return;
+        }
+        if val["data"].is_string() {
+            let s = val["data"].as_str().unwrap_or("");
+            if s.contains("energyKj") || s.contains("protein") {
+                println!("{}", format_nutrition(s));
+                return;
+            }
         }
     }
     if val.get("success").is_some() && val.get("code").is_some() && val.get("message").is_some() {
@@ -478,5 +509,268 @@ fn format_mall_order(val: &Value) -> String {
     } else {
         out.push_str("\n✅ 操作成功\n\n");
     }
+    out
+}
+
+fn format_nutrition(data_str: &str) -> String {
+    let mut out = String::new();
+    out.push_str("\n🥗 餐品营养信息\n");
+
+    // Parse header: [count]{field1,field2,...}:
+    let Some(header_start) = data_str.find('{') else {
+        out.push_str("  (无法解析数据)\n\n");
+        return out;
+    };
+    let Some(header_end) = data_str.find("}:") else {
+        out.push_str("  (无法解析数据)\n\n");
+        return out;
+    };
+    let header = &data_str[header_start + 1..header_end];
+    let fields: Vec<&str> = header.split(',').collect();
+
+    if fields.is_empty() {
+        out.push_str("  (无数据)\n\n");
+        return out;
+    }
+
+    let mut builder = Builder::default();
+    builder.push_record(fields.clone());
+
+    // Parse data lines after the header
+    let data_part = &data_str[header_end + 2..];
+    for line in data_part.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let values: Vec<&str> = line.split(',').collect();
+        builder.push_record(values);
+    }
+
+    let table = builder.build().with(Style::modern()).to_string();
+    out.push_str(&table);
+    out.push('\n');
+    out
+}
+
+fn format_calendar(val: &Value) -> String {
+    let mut out = String::new();
+    let data = get_data(val);
+
+    out.push_str("\n📅 活动日历\n");
+    out.push_str("═".repeat(50).as_str());
+    out.push('\n');
+
+    let daily_list = data.get("dailyList").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    if daily_list.is_empty() {
+        out.push_str("  (暂无活动)\n\n");
+        return out;
+    }
+
+    for day in daily_list {
+        let date_text = day.get("dateText").and_then(|v| v.as_str()).unwrap_or("-");
+        out.push_str(&format!("\n  📆 {}\n", date_text));
+
+        if let Some(events) = day.get("events").and_then(|v| v.as_array()) {
+            for event in events {
+                let title = event.get("activityTitle").and_then(|v| v.as_str())
+                    .filter(|s| !s.is_empty())
+                    .or_else(|| event.get("articleDto").and_then(|a| a.get("title")).and_then(|v| v.as_str()))
+                    .unwrap_or("-");
+                let content = event.get("activitySubTitle").and_then(|v| v.as_str())
+                    .filter(|s| !s.is_empty())
+                    .or_else(|| event.get("articleDto").and_then(|a| a.get("content")).and_then(|v| v.as_str()))
+                    .unwrap_or("");
+                out.push_str(&format!("     • {}\n", title));
+                if !content.is_empty() {
+                    for line in content.lines() {
+                        let line = line.trim();
+                        if !line.is_empty() {
+                            out.push_str(&format!("       {}\n", line));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    out.push('\n');
+    out
+}
+
+fn format_catering(val: &Value) -> String {
+    let mut out = String::new();
+    let data = get_data(val);
+
+    out.push_str("\n🍱 助餐服务\n");
+    out.push_str("═".repeat(50).as_str());
+    out.push('\n');
+
+    let items = data.get("mealAssistanceItems").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    if items.is_empty() {
+        out.push_str("  (当前门店无可选助餐服务)\n\n");
+        return out;
+    }
+
+    let mut builder = Builder::default();
+    builder.push_record(["服务编码", "服务名称", "服务内容", "状态"]);
+    for item in items {
+        let code = item.get("gmServiceCode").and_then(|v| v.as_str()).unwrap_or("-");
+        let name = item.get("gmServiceName").and_then(|v| v.as_str()).unwrap_or("-");
+        let services = item.get("serviceItems")
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join("; "))
+            .unwrap_or_default();
+        let enable = item.get("enable").and_then(|v| v.as_bool()).unwrap_or(false);
+        let status = if enable { "可选" } else { "不可选" };
+        builder.push_record([code, name, &services, status]);
+    }
+    let table = builder.build().with(Style::modern()).to_string();
+    out.push_str(&table);
+    out.push('\n');
+
+    if let Some(promos) = data.get("promotions").and_then(|v| v.as_array()) {
+        out.push_str("\n  🎁 阶梯优惠:\n");
+        for p in promos {
+            if let Some(text) = p.as_str() {
+                out.push_str(&format!("     • {}\n", text));
+            }
+        }
+    }
+    out.push('\n');
+    out
+}
+
+fn format_meal_detail(val: &Value) -> String {
+    let mut out = String::new();
+    let data = get_data(val);
+
+    let code = data.get("code").and_then(|v| v.as_str()).unwrap_or("-");
+    let price = data.get("price").and_then(|v| v.as_str()).unwrap_or("-");
+
+    out.push_str("\n🔍 餐品详情\n");
+    out.push_str("═".repeat(50).as_str());
+    out.push('\n');
+    out.push_str(&format!("  编码: {}\n", code));
+    out.push_str(&format!("  价格: ¥{}\n", price));
+
+    let rounds = data.get("rounds").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    if !rounds.is_empty() {
+        out.push_str("\n  🔄 选配:\n");
+        for round in rounds {
+            let round_name = round.get("name").and_then(|v| v.as_str()).unwrap_or("选配");
+            out.push_str(&format!("    【{}】\n", round_name));
+            if let Some(choices) = round.get("choices").and_then(|v| v.as_array()) {
+                for choice in choices {
+                    let c_code = choice.get("code").and_then(|v| v.as_str()).unwrap_or("-");
+                    let c_name = choice.get("name").and_then(|v| v.as_str()).unwrap_or("-");
+                    let c_price = choice.get("price").and_then(|v| v.as_str()).unwrap_or("");
+                    if c_price.is_empty() {
+                        out.push_str(&format!("       • {} ({}\n", c_name, c_code));
+                    } else {
+                        out.push_str(&format!("       • {} (+¥{}) ({}\n", c_name, c_price, c_code));
+                    }
+                }
+            }
+        }
+    }
+    out.push('\n');
+    out
+}
+
+fn format_mall_orders(val: &Value) -> String {
+    let mut out = String::new();
+    let data = get_data(val);
+
+    out.push_str("\n🛒 商城订单\n");
+
+    let list_wrapper = data.as_array().and_then(|a| a.first()).cloned().unwrap_or(Value::Null);
+    let orders = list_wrapper.get("list").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+
+    if orders.is_empty() {
+        out.push_str("  (暂无订单)\n\n");
+        return out;
+    }
+
+    let mut builder = Builder::default();
+    builder.push_record(["订单号", "状态", "商品", "数量"]);
+    for order in orders {
+        let oid = order.get("orderId").and_then(|v| v.as_str()).unwrap_or("-");
+        let status = order.get("orderStatusTitle").and_then(|v| v.as_str()).unwrap_or("-");
+        let total = order.get("totalCount").and_then(|v| v.as_i64()).unwrap_or(0).to_string();
+        let goods = order.get("goods")
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter()
+                .filter_map(|g| g.get("spuName").and_then(|v| v.as_str()))
+                .collect::<Vec<_>>()
+                .join(", "))
+            .unwrap_or_default();
+        builder.push_record([oid, status, &goods, &total]);
+    }
+    let table = builder.build().with(Style::modern()).to_string();
+    out.push_str(&table);
+    out.push('\n');
+
+    let has_next = list_wrapper.get("hasNext").and_then(|v| v.as_bool()).unwrap_or(false);
+    if has_next {
+        let last_id = list_wrapper.get("lastId").and_then(|v| v.as_i64()).unwrap_or(0);
+        out.push_str(&format!("\n  ➡️  还有更多订单，翻页请用 --last-id {}\n", last_id));
+    }
+    out.push('\n');
+    out
+}
+
+fn format_mall_order_detail(val: &Value) -> String {
+    let mut out = String::new();
+    let data = get_data(val);
+
+    let oid = data.get("orderId").and_then(|v| v.as_str()).unwrap_or("-");
+    let status = data.get("orderStatusTitle").and_then(|v| v.as_str()).unwrap_or("-");
+    let sub_status = data.get("orderStatusSubTitle").and_then(|v| v.as_str()).unwrap_or("");
+    let pay = data.get("payChannelLabel").and_then(|v| v.as_str()).unwrap_or("-");
+    let create_time = data.get("createTime").and_then(|v| v.as_str()).unwrap_or("-");
+    let phone = data.get("customerServicePhone").and_then(|v| v.as_str()).unwrap_or("-");
+
+    out.push_str("\n📋 商城订单详情\n");
+    out.push_str("═".repeat(50).as_str());
+    out.push('\n');
+    out.push_str(&format!("  订单号:   {}\n", oid));
+    out.push_str(&format!("  状态:     {}\n", status));
+    if !sub_status.is_empty() {
+        out.push_str(&format!("  备注:     {}\n", sub_status));
+    }
+    out.push_str(&format!("  支付方式: {}\n", pay));
+    out.push_str(&format!("  下单时间: {}\n", create_time));
+    out.push_str(&format!("  客服电话: {}\n", phone));
+
+    let goods = data.get("goods").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    if !goods.is_empty() {
+        out.push_str("\n  🎁 商品:\n");
+        for g in goods {
+            let name = g.get("spuName").and_then(|v| v.as_str()).unwrap_or("-");
+            let sku = g.get("skuName").and_then(|v| v.as_str()).unwrap_or("");
+            let count = g.get("count").and_then(|v| v.as_i64()).unwrap_or(0);
+            let points = g.get("points").and_then(|v| v.as_str()).unwrap_or("0");
+            if sku.is_empty() || sku == name {
+                out.push_str(&format!("     • {} x{} ({}积分)\n", name, count, points));
+            } else {
+                out.push_str(&format!("     • {} ({}) x{} ({}积分)\n", name, sku, count, points));
+            }
+        }
+    }
+
+    if let Some(addr) = data.get("address") {
+        let name = addr.get("name").and_then(|v| v.as_str()).unwrap_or("-");
+        let mobile = addr.get("mobile").and_then(|v| v.as_str()).unwrap_or("-");
+        let full = addr.get("fullAddress").and_then(|v| v.as_str()).unwrap_or("-");
+        out.push_str(&format!("\n  📍 收货地址: {} {} {}\n", name, mobile, full));
+    }
+
+    if let Some(logistics) = data.get("logistics") {
+        let company = logistics.get("company").and_then(|v| v.as_str()).unwrap_or("-");
+        let no = logistics.get("logisticsNo").and_then(|v| v.as_str()).unwrap_or("-");
+        out.push_str(&format!("\n  🚚 物流: {} {}\n", company, no));
+    }
+
+    out.push('\n');
     out
 }
