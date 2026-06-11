@@ -1,0 +1,180 @@
+# mcd-cli Complete Command Reference
+
+## Store queries
+
+### Nearby stores (dine-in / drive-thru)
+
+```bash
+mcd-cli nearby --city <CITY> --keyword <KEYWORD> --be-type <BE_TYPE> --search-type 2
+```
+
+| Parameter | Description |
+|---|---|
+| `--city` | City name, e.g. "南京市" |
+| `--keyword` | Search keyword, e.g. "南京审计大学" or "麦当劳" |
+| `--be-type` | `1` = dine-in, `5` = drive-thru |
+| `--search-type` | `2` = keyword search |
+
+### Delivery / catering stores
+
+Requires a saved delivery address first.
+
+```bash
+mcd-cli address list --be-type 2
+mcd-cli delivery-stores --address-id <ADDRESS_ID> --be-type <BE_TYPE>
+```
+
+| `--be-type` | Scene |
+|---|---|
+| `2` | McDelivery |
+| `6` | Catering |
+
+### Catering service info
+
+```bash
+mcd-cli catering --store <STORE_CODE> --be <BE_CODE>
+```
+
+Returns `gmServiceCode` which is required for catering orders.
+
+## Menu & product detail
+
+### Browse menu
+
+```bash
+mcd-cli menu --store <STORE_CODE> --order-type <ORDER_TYPE> --be-type <BE_TYPE>
+```
+
+With reservation:
+
+```bash
+mcd-cli menu --store <STORE_CODE> --order-type 1 --be-type 1 --reservation-date "2026-05-25 12:00"
+```
+
+| Parameter | Values |
+|---|---|
+| `--order-type` | `1` = dine-in/drive-thru, `2` = delivery/catering |
+| `--be-type` | `1` = dine-in, `2` = McDelivery, `5` = drive-thru, `6` = catering |
+| `--reservation-date` | Format `yyyy-MM-dd HH:mm` |
+
+### Product detail
+
+```bash
+mcd-cli detail <PRODUCT_CODE> --store <STORE_CODE> --order-type 1 --be-type 1
+```
+
+## Price calculation
+
+```bash
+mcd-cli price --store <STORE_CODE> --order-type 1 --be-type 1 \
+  --items '[{"productCode":"9900005462","quantity":1}]'
+```
+
+With coupon:
+
+```bash
+mcd-cli price --store <STORE_CODE> --order-type 1 --be-type 1 \
+  --items '[{"productCode":"9900005462","quantity":1}]' \
+  --coupon-id <COUPON_ID>
+```
+
+The response includes `takeWayList[].code` which is needed for dine-in/drive-thru orders.
+
+## Order management
+
+### Create order (dine-in)
+
+```bash
+mcd-cli order create --store <STORE_CODE> --order-type 1 --be-type 1 \
+  --items '[{"productCode":"9900005462","quantity":1}]' \
+  --take-way <TAKE_WAY_CODE>
+```
+
+### Create order (drive-thru)
+
+Same as dine-in but with `--be-type 5`.
+
+### Create order (delivery)
+
+```bash
+mcd-cli order create --store <STORE_CODE> --be <BE_CODE> --address <ADDRESS_ID> \
+  --order-type 2 --be-type 2 \
+  --items '[{"productCode":"903050","quantity":1}]'
+```
+
+### Create order (catering)
+
+```bash
+mcd-cli order create --store <STORE_CODE> --be <BE_CODE> --order-type 2 --be-type 6 \
+  --items '[{"productCode":"xxx","quantity":1}]' \
+  --gm-service-code <GM_SERVICE_CODE>
+```
+
+### Create order (with reservation)
+
+Append `--reservation-date "yyyy-MM-dd HH:mm"` to any order create command.
+
+### Query order
+
+```bash
+mcd-cli order query <ORDER_ID>
+```
+
+Returns order status and `payH5Url` for payment.
+
+## Coupons
+
+```bash
+mcd-cli coupon store     # store-available coupons
+mcd-cli coupon my        # my coupons
+mcd-cli coupon available # coupons available to claim
+mcd-cli coupon receive   # claim all available coupons
+```
+
+## Loyalty points mall
+
+```bash
+mcd-cli mall products              # list products
+mcd-cli mall detail <SPU_ID>        # product detail
+mcd-cli mall exchange --sku-id <SKU_ID> --count 1                                        # virtual coupon
+mcd-cli mall physical --sku-id <SKU_ID> --count 1 --address-id <ADDRESS_ID> --spu-category 2  # physical item
+mcd-cli mall orders                # mall order history
+mcd-cli mall order-detail <ORDER_ID>  # mall order detail
+```
+
+## Account & info
+
+```bash
+mcd-cli init       # test MCP connection
+mcd-cli config     # view current config
+mcd-cli time       # current time
+mcd-cli calendar    # activity calendar
+mcd-cli account    # account info & points
+mcd-cli nutrition   # nutrition info for menu items
+```
+
+## Address management
+
+```bash
+mcd-cli address list   # list saved addresses
+mcd-cli address add    # add new address
+```
+
+## Common product codes
+
+| Product | Code |
+|---|---|
+| Quarter Pounder with Cheese meal | `9900005462` |
+| McChicken meal | `9900005456` |
+| Big Mac meal | `9900005466` |
+| Large fries | `4820` |
+| Medium cola | `903050` |
+
+> Actual codes vary by store. Always verify with `mcd-cli menu`.
+
+## Notes
+
+- Token rate limit: 600 requests/minute per token.
+- Payment: `payH5Url` is a QR-code page; can also pay in McDonald's App under "My Orders".
+- `price` supports `--coupon-id` and `--coupon-code` for discount calculation.
+- `order create` also supports `--coupon-id` and `--coupon-code` to apply discounts.
